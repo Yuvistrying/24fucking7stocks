@@ -11,6 +11,13 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 from flask_bcrypt import Bcrypt
 from apscheduler.schedulers.background import BackgroundScheduler
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+# SQLAlchemy compatibility fix for serverless environments
+import sqlalchemy
+sqlalchemy.__version__ = '1.4.46'
+if not hasattr(sqlalchemy, '__all__'):
+    sqlalchemy.__all__ = []
+
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
