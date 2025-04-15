@@ -27,12 +27,70 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True
 
 # Configure database
 DATABASE_URL = os.environ.get('DATABASE_URL', 'sqlite:///stock_dashboard.db')
+
+# Fix for full URLs that might be provided by Vercel or Supabase
+if DATABASE_URL.startswith('http'):
+    print(f"WARNING: Converting http/https URL to SQLAlchemy format: {DATABASE_URL}")
+    
+    # Supabase specific handling - they provide a connection string in a different format
+    if 'supabase.co' in DATABASE_URL:
+        # Extract direct connection details from Supabase connection string
+        # Example format: https://[project-ref].supabase.co/connection-string?with-password=[pwd]
+        try:
+            # In most cases, Supabase provides a direct connection string with all details
+            # Check if we have a regular postgres:// format in an environment variable
+            direct_url = os.environ.get('SUPABASE_DIRECT_URL')
+            if direct_url and direct_url.startswith('postgres://'):
+                DATABASE_URL = direct_url.replace('postgres://', 'postgresql+pg8000://')
+                print(f"Using direct Supabase connection string: {DATABASE_URL}")
+            else:
+                # Fall back to SQLite if we can't get a proper connection string
+                print("Supabase URL detected but no direct connection string found. Falling back to SQLite.")
+                DATABASE_URL = 'sqlite:///stock_dashboard.db'
+        except Exception as e:
+            print(f"Error parsing Supabase URL: {e}")
+            DATABASE_URL = 'sqlite:///stock_dashboard.db'
+    else:
+        # General handling for other HTTP URLs
+        try:
+            import urllib.parse
+            parsed_url = urllib.parse.urlparse(DATABASE_URL)
+            
+            # Check if it's a postgres URL
+            if 'postgres' in parsed_url.netloc or 'postgresql' in parsed_url.netloc:
+                # Create a proper postgres URL for SQLAlchemy
+                username = parsed_url.username or ''
+                password = parsed_url.password or ''
+                host = parsed_url.hostname or ''
+                port = parsed_url.port or 5432
+                db_name = parsed_url.path.lstrip('/') or 'postgres'
+                
+                DATABASE_URL = f"postgresql+pg8000://{username}:{password}@{host}:{port}/{db_name}"
+                print(f"Converted to: {DATABASE_URL}")
+            else:
+                # Default to SQLite for unsupported URLs
+                print("Unsupported database URL format, falling back to SQLite")
+                DATABASE_URL = 'sqlite:///stock_dashboard.db'
+        except Exception as e:
+            print(f"Error parsing database URL: {e}")
+            DATABASE_URL = 'sqlite:///stock_dashboard.db'
+
 # Fix for Heroku PostgreSQL URLs
-if DATABASE_URL.startswith("postgres://"):
+elif DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    
 # Use pg8000 as the PostgreSQL driver
 if DATABASE_URL.startswith("postgresql://"):
     DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+pg8000://", 1)
+
+# For testing and debugging, we can use SQLite locally
+if os.environ.get('USE_SQLITE', 'False').lower() == 'true' or os.environ.get('VERCEL', '') == '1':
+    print("Forcing SQLite usage based on environment variable or Vercel deployment")
+    DATABASE_URL = 'sqlite:///stock_dashboard.db'
+
+# Print the final DATABASE_URL for debugging
+print(f"Using DATABASE_URL: {DATABASE_URL}")
+
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
