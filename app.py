@@ -28,8 +28,22 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True
 # Configure database
 DATABASE_URL = os.environ.get('DATABASE_URL', 'sqlite:///stock_dashboard.db')
 
+# Print raw DATABASE_URL for debugging
+print(f"Raw DATABASE_URL: {DATABASE_URL}")
+
+# Enable Supabase Direct Connection with pg8000
+SUPABASE_CONNECTION_STRING = os.environ.get('SUPABASE_CONNECTION_STRING', '')
+if SUPABASE_CONNECTION_STRING:
+    print(f"Using custom Supabase connection string")
+    DATABASE_URL = SUPABASE_CONNECTION_STRING
+    # Make sure we use pg8000 as driver
+    if DATABASE_URL.startswith("postgresql://"):
+        DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+pg8000://", 1)
+    elif DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+pg8000://", 1)
+
 # Fix for full URLs that might be provided by Vercel or Supabase
-if DATABASE_URL.startswith('http'):
+elif DATABASE_URL.startswith('http'):
     print(f"WARNING: Converting http/https URL to SQLAlchemy format: {DATABASE_URL}")
     
     # Supabase specific handling - they provide a connection string in a different format
@@ -91,8 +105,24 @@ if os.environ.get('USE_SQLITE', 'False').lower() == 'true' or os.environ.get('VE
 # Print the final DATABASE_URL for debugging
 print(f"Using DATABASE_URL: {DATABASE_URL}")
 
+# Configure database engine with options for better reliability in serverless environments
+engine_options = {}
+if 'postgresql' in DATABASE_URL or 'postgres' in DATABASE_URL:
+    engine_options = {
+        'pool_pre_ping': True,  # Check connection health before using
+        'pool_recycle': 280,    # Recycle connections after 280 seconds (before Supabase 5 min timeout)
+        'pool_size': 5,         # Keep pool small for serverless
+        'max_overflow': 10,     # Allow some overflow connections
+        'connect_args': {
+            'connect_timeout': 10,  # 10-second connection timeout
+            'application_name': 'stock_dashboard_app'  # Identify app in Supabase logs
+        }
+    }
+    print(f"Configured PostgreSQL engine options for better serverless reliability")
+
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = engine_options
 db = SQLAlchemy(app)
 
 # Initialize Flask-Login
@@ -360,30 +390,59 @@ scheduler.add_job(update_all_stock_data, 'interval', minutes=1, id='stock_update
 def initialize_database():
     """Initialize database tables and create default admin user if needed"""
     print("Initializing database...")
-    # Create all tables
-    db.create_all()
     
+    # Test database connectivity first
+    if 'postgresql' in DATABASE_URL or 'postgres' in DATABASE_URL:
+        try:
+            # Try a simple database connection
+            print("Testing database connectivity...")
+            connection = db.engine.connect()
+            connection.execute("SELECT 1")
+            connection.close()
+            print("Database connection successful!")
+        except Exception as e:
+            print(f"ERROR: Database connection failed: {str(e)}")
+            print("This may be due to IP restrictions, network issues, or incorrect credentials.")
+            print("If running on Vercel, make sure Supabase allows connections from Vercel's IP range.")
+            print("Consider using Supabase Connection Pooling or switching to a serverless-friendly database.")
+            
+            # Don't raise the exception - let the app continue with degraded functionality
+            # We'll handle database failures gracefully in the routes
+            
+    # Create all tables
+    try:
+        db.create_all()
+        print("Database tables created successfully")
+    except Exception as e:
+        print(f"ERROR creating database tables: {str(e)}")
+        return
+
     # Check if any users exist
-    if User.query.count() == 0:
-        # Create default admin user
-        default_admin_password = os.environ.get('DEFAULT_ADMIN_PASSWORD', 'admin')
-        admin_user = User(
-            username='admin',
-            password_hash=bcrypt.generate_password_hash(default_admin_password).decode('utf-8')
-        )
-        db.session.add(admin_user)
-        db.session.commit()
-        
-        # Add default tickers for admin
-        default_tickers = ['AAPL', 'MSFT', 'GOOGL']
-        for symbol in default_tickers:
-            ticker = Ticker(symbol=symbol, user_id=admin_user.id)
-            db.session.add(ticker)
-        
-        db.session.commit()
-        print("Created default admin user with initial tickers")
-    else:
-        print("Database already initialized with users")
+    try:
+        user_count = User.query.count()
+        if user_count == 0:
+            # Create default admin user
+            default_admin_password = os.environ.get('DEFAULT_ADMIN_PASSWORD', 'admin')
+            admin_user = User(
+                username='admin',
+                password_hash=bcrypt.generate_password_hash(default_admin_password).decode('utf-8')
+            )
+            db.session.add(admin_user)
+            db.session.commit()
+            
+            # Add default tickers for admin
+            default_tickers = ['AAPL', 'MSFT', 'GOOGL']
+            for symbol in default_tickers:
+                ticker = Ticker(symbol=symbol, user_id=admin_user.id)
+                db.session.add(ticker)
+            
+            db.session.commit()
+            print("Created default admin user with initial tickers")
+        else:
+            print(f"Database already initialized with {user_count} users")
+    except Exception as e:
+        print(f"ERROR creating default user: {str(e)}")
+        # Continue anyway - the app can still function without default users
 
 # Initialize the scheduler in a safer way
 def start_scheduler():
