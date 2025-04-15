@@ -63,4 +63,4 @@ MIT
 ## Acknowledgements
 
 - Stock data scraped from public sources
-- Built with Flask, Bootstrap, JavaScript, and PostgreSQL 
+- Built with Flask, Bootstrap, JavaScript, and PostgreSQL
