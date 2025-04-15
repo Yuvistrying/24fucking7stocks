@@ -1,22 +1,22 @@
-try:
-    from app import app, db, initialize_database
+"""
+WSGI Entry Point for Vercel
 
-    # Initialize the database on startup
-    with app.app_context():
-        try:
-            initialize_database()
-            print("Database initialization complete")
-        except Exception as e:
-            print(f"Error during database initialization: {str(e)}")
-            # Continue anyway - we might be able to connect later
+This module applies compatibility patches before importing Flask,
+then imports and initializes the Flask application.
+"""
 
-    # For Vercel serverless deployment
-    app.debug = False
+# Apply compatibility patches first
+import werkzeug_patch
 
-    # This is the WSGI application object that Vercel will use
-    application = app
-except Exception as e:
-    import traceback
-    print(f"Error in wsgi.py: {str(e)}")
-    traceback.print_exc()
-    raise 
+# Then import the Flask app
+from app import app, db, initialize_database
+
+# Initialize the database
+with app.app_context():
+    initialize_database()
+
+# Make the app available to Vercel
+application = app
+
+# For Vercel serverless deployment
+app.debug = False 
