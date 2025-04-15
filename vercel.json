@@ -18,11 +18,5 @@
   "env": {
     "FLASK_APP": "app.py",
     "FLASK_ENV": "production"
-  },
-  "functions": {
-    "wsgi.py": {
-      "memory": 1024,
-      "maxDuration": 10
-    }
   }
 } 
