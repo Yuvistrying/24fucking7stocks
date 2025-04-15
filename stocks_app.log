@@ -1,0 +1,59 @@
+Background scheduler started at 2025-04-15 17:31:14
+Next update scheduled for 2025-04-15 14:32:14.204803+00:00
+Scheduler triggered update at 2025-04-15 17:31:14
+Scraping data for PLTR...
+Scraping data for NVDA...
+Scraping data for TSLA...
+Scraping data for HOOD...
+Scraping data for QQQ...
+Scraping data for SPY...
+Scraping data for GLD...
+Updated all stock data at 2025-04-15 17:31:15 (took 1.06 seconds)
+ * Serving Flask app 'app'
+ * Debug mode: on
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://10.0.0.6:5001
+Press CTRL+C to quit
+ * Restarting with watchdog (fsevents)
+ * Debugger is active!
+ * Debugger PIN: 118-985-915
+Background scheduler started at 2025-04-15 17:31:15
+Next update scheduled for 2025-04-15 14:32:15.615893+00:00
+Scheduler triggered update at 2025-04-15 17:31:15
+Scraping data for PLTR...
+Scraping data for NVDA...
+Scraping data for TSLA...
+Scraping data for HOOD...
+Scraping data for QQQ...
+Scraping data for SPY...
+Scraping data for GLD...
+Updated all stock data at 2025-04-15 17:31:16 (took 0.70 seconds)
+Traceback (most recent call last):
+  File "/Users/yuval/24fucking7fuckingstocksfuckme/app.py", line 280, in <module>
+    app.run(debug=True, host='0.0.0.0', port=5001) 
+  File "/Users/yuval/anaconda3/lib/python3.10/site-packages/flask/app.py", line 889, in run
+    run_simple(t.cast(str, host), port, self, **options)
+  File "/Users/yuval/anaconda3/lib/python3.10/site-packages/werkzeug/serving.py", line 1115, in run_simple
+    run_with_reloader(
+  File "/Users/yuval/anaconda3/lib/python3.10/site-packages/werkzeug/_reloader.py", line 459, in run_with_reloader
+    ensure_echo_on()
+  File "/Users/yuval/anaconda3/lib/python3.10/site-packages/werkzeug/_reloader.py", line 439, in ensure_echo_on
+    termios.tcsetattr(sys.stdin, termios.TCSANOW, attributes)
+termios.error: (4, 'Interrupted system call')
+Error submitting job "update_all_stock_data (trigger: interval[0:01:00], next run at: 2025-04-15 14:32:15 UTC)" to executor "default"
+Traceback (most recent call last):
+  File "/Users/yuval/anaconda3/lib/python3.10/site-packages/apscheduler/schedulers/base.py", line 978, in _process_jobs
+    executor.submit_job(job, run_times)
+  File "/Users/yuval/anaconda3/lib/python3.10/site-packages/apscheduler/executors/base.py", line 71, in submit_job
+    self._do_submit_job(job, run_times)
+  File "/Users/yuval/anaconda3/lib/python3.10/site-packages/apscheduler/executors/pool.py", line 28, in _do_submit_job
+    f = self._pool.submit(run_job, job, job._jobstore_alias, run_times, self._logger.name)
+  File "/Users/yuval/anaconda3/lib/python3.10/concurrent/futures/thread.py", line 169, in submit
+    raise RuntimeError('cannot schedule new futures after '
+RuntimeError: cannot schedule new futures after interpreter shutdown
+/Users/yuval/anaconda3/lib/python3.10/multiprocessing/resource_tracker.py:224: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '
+/Users/yuval/anaconda3/lib/python3.10/multiprocessing/resource_tracker.py:224: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '

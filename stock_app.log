@@ -1,0 +1,28 @@
+Background scheduler started at 2025-04-15 21:09:01
+Next update scheduled for 2025-04-15 18:10:01.465186+00:00
+Loaded 8 tickers from config file
+Scheduler triggered update at 2025-04-15 21:09:01
+Scraping data for PLTR...
+Scraping data for NVDA...
+Scraping data for TSLA...
+Scraping data for HOOD...
+Scraping data for QQQ...Scraping data for SPY...
+Scraping data for GLD...
+
+Scraping data for TQQQ...
+Updated all stock data at 2025-04-15 21:09:02 (took 0.88 seconds)
+ * Serving Flask app 'app'
+ * Debug mode: on
+Address already in use
+Port 5001 is in use by another program. Either identify and stop that program, or start the server with a different port.
+Error submitting job "update_all_stock_data (trigger: interval[0:01:00], next run at: 2025-04-15 18:10:01 UTC)" to executor "default"
+Traceback (most recent call last):
+  File "/Users/yuval/anaconda3/lib/python3.10/site-packages/apscheduler/schedulers/base.py", line 978, in _process_jobs
+    executor.submit_job(job, run_times)
+  File "/Users/yuval/anaconda3/lib/python3.10/site-packages/apscheduler/executors/base.py", line 71, in submit_job
+    self._do_submit_job(job, run_times)
+  File "/Users/yuval/anaconda3/lib/python3.10/site-packages/apscheduler/executors/pool.py", line 28, in _do_submit_job
+    f = self._pool.submit(run_job, job, job._jobstore_alias, run_times, self._logger.name)
+  File "/Users/yuval/anaconda3/lib/python3.10/concurrent/futures/thread.py", line 169, in submit
+    raise RuntimeError('cannot schedule new futures after '
+RuntimeError: cannot schedule new futures after interpreter shutdown

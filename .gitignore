@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Flask
+instance/
+.webassets-cache
+stock_data.json
+tickers_config.json
+users_config.json
+*.html_debug
+supervisord.log
+stocks_supervisor.log
+app.log
+
+# OS
+.DS_Store
+Thumbs.db 

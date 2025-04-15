@@ -1,0 +1,1 @@
+./run_stocks.sh: line 10: 70207 Terminated: 15          python app.py >> $LOG_FILE 2>&1

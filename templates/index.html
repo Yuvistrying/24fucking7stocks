@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>24/7 Stock Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .card {
+            background-color: #1e1e1e;
+            border: 1px solid #333;
+            margin-bottom: 15px;
+            transition: transform 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+        .card-header {
+            background-color: #272727;
+            border-bottom: 1px solid #333;
+            font-weight: bold;
+            position: relative;
+        }
+        .ticker-symbol {
+            font-size: 1.8rem;
+            font-weight: bold;
+            letter-spacing: 0.05em;
+            display: inline-block;
+            background: linear-gradient(90deg, rgba(50,50,50,1) 0%, rgba(70,70,70,1) 100%);
+            padding: 5px 12px;
+            border-radius: 6px;
+            margin-right: 10px;
+        }
+        .price-up {
+            color: #4caf50;
+        }
+        .price-down {
+            color: #f44336;
+        }
+        .price-neutral {
+            color: #999;
+        }
+        .last-updated {
+            font-size: 0.8rem;
+            color: #888;
+        }
+        .market-badge {
+            font-size: 0.7rem;
+            padding: 3px 8px;
+        }
+        .pre-market {
+            background-color: #673ab7;
+        }
+        .market-open {
+            background-color: #4caf50;
+        }
+        .after-hours {
+            background-color: #ff9800;
+        }
+        .market-closed {
+            background-color: #f44336;
+        }
+        .error {
+            background-color: #424242;
+        }
+        .delete-ticker {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 24px;
+            height: 24px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        .add-ticker-form {
+            display: flex;
+            align-items: center;
+            margin-right: 10px;
+        }
+        .add-ticker-input {
+            width: 100px;
+            margin-right: 5px;
+            background-color: #333;
+            border: 1px solid #444;
+            color: #fff;
+        }
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1100;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="display-5">24/7 Stock Dashboard</h1>
+            <div class="d-flex align-items-center">
+                <span id="current-time" class="me-3"></span>
+                
+                <!-- User info and options -->
+                <div class="dropdown me-3">
+                    <button class="btn btn-dark dropdown-toggle" type="button" id="userMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-person-circle me-1"></i> {{ username }}
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end" aria-labelledby="userMenuButton">
+                        <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right me-1"></i> Logout</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Add Ticker Form -->
+                <form id="add-ticker-form" class="add-ticker-form">
+                    <input type="text" id="ticker-input" class="form-control form-control-sm add-ticker-input" placeholder="Add ticker" required>
+                    <button type="submit" class="btn btn-sm btn-success">
+                        <i class="bi bi-plus"></i>
+                    </button>
+                </form>
+                
+                <!-- Removed refresh button -->
+            </div>
+        </div>
+        
+        <!-- Alert for messages -->
+        <div id="alerts-container" class="mb-3" style="display: none;"></div>
+        
+        <div class="row" id="stocks-container">
+            {% for ticker, data in stocks.items() %}
+            <div class="col-md-4">
+                <div class="card" id="card-{{ ticker }}">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span class="ticker-symbol">{{ ticker }}</span>
+                        {% if data.market_status %}
+                        <span class="badge rounded-pill 
+                            {% if 'Pre-market' in data.market_status %}pre-market
+                            {% elif 'Market Open' in data.market_status %}market-open
+                            {% elif 'After Hours' in data.market_status %}after-hours
+                            {% elif 'Error' in data.market_status %}error
+                            {% else %}market-closed{% endif %} market-badge">
+                            {{ data.market_status }}
+                        </span>
+                        {% endif %}
+                        <button class="btn btn-danger btn-sm rounded-circle delete-ticker" 
+                                onclick="removeTicker('{{ ticker }}')" 
+                                title="Remove {{ ticker }}">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <h2 class="card-title {% if '-' in data.change %}price-down{% elif '+' in data.change %}price-up{% else %}price-neutral{% endif %}">
+                            {{ data.price }}
+                        </h2>
+                        <p class="card-text {% if '-' in data.change %}price-down{% elif '+' in data.change %}price-up{% else %}price-neutral{% endif %}">
+                            {{ data.change }}
+                        </p>
+                        <p class="last-updated">Last updated: {{ data.last_updated }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Removed floating refresh button -->
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Removed event listeners for page refresh (F5 or browser refresh button)
+        
+        // StorageManager for persisting card positions
+        const StorageManager = {
+            STORAGE_KEY: 'stock_dashboard_order',
+            
+            // Check if localStorage is available
+            isAvailable: function() {
+                try {
+                    const test = 'test';
+                    localStorage.setItem(test, test);
+                    localStorage.removeItem(test);
+                    return true;
+                } catch (e) {
+                    console.error('LocalStorage is not available:', e);
+                    return false;
+                }
+            },
+            
+            // Get the saved order or create a new one
+            getOrder: function() {
+                if (!this.isAvailable()) return [];
+                
+                const savedOrder = localStorage.getItem(this.STORAGE_KEY);
+                return savedOrder ? JSON.parse(savedOrder) : [];
+            },
+            
+            // Save the current order to localStorage
+            saveOrder: function(order) {
+                if (!this.isAvailable()) return;
+                
+                localStorage.setItem(this.STORAGE_KEY, JSON.stringify(order));
+            },
+            
+            // Add a ticker to the beginning of the order
+            addTickerToOrder: function(ticker) {
+                if (!this.isAvailable()) return;
+                
+                const currentOrder = this.getOrder();
+                
+                // If ticker already exists, remove it first
+                const index = currentOrder.indexOf(ticker);
+                if (index !== -1) {
+                    currentOrder.splice(index, 1);
+                }
+                
+                // Add to the beginning of the array
+                currentOrder.unshift(ticker);
+                this.saveOrder(currentOrder);
+            },
+            
+            // Remove a ticker from the order
+            removeTickerFromOrder: function(ticker) {
+                if (!this.isAvailable()) return;
+                
+                const currentOrder = this.getOrder();
+                const index = currentOrder.indexOf(ticker);
+                
+                if (index !== -1) {
+                    currentOrder.splice(index, 1);
+                    this.saveOrder(currentOrder);
+                }
+            }
+        };
+        
+        // Function to capture current page state before reload
+        window.addEventListener('beforeunload', function() {
+            // Capture current visible tickers and their order
+            if (StorageManager.isAvailable()) {
+                const currentVisibleOrder = Array.from(document.querySelectorAll('.card'))
+                    .map(card => card.id.replace('card-', ''));
+                
+                if (currentVisibleOrder.length > 0) {
+                    StorageManager.saveOrder(currentVisibleOrder);
+                }
+            }
+        });
+        
+        // Function to arrange cards based on saved order
+        function arrangeCardsBasedOnOrder() {
+            const container = document.getElementById('stocks-container');
+            const savedOrder = StorageManager.getOrder();
+            
+            // If we have a saved order, use it
+            if (savedOrder.length > 0) {
+                // Get current tickers on the page
+                const currentTickers = Array.from(document.querySelectorAll('.card'))
+                    .map(card => card.id.replace('card-', ''));
+                
+                // Filter saved order to include only tickers currently on the page
+                const validOrderedTickers = savedOrder.filter(ticker => currentTickers.includes(ticker));
+                
+                // Add any tickers not in the saved order to the end
+                const tickersNotInOrder = currentTickers.filter(ticker => !validOrderedTickers.includes(ticker));
+                const finalOrder = [...validOrderedTickers, ...tickersNotInOrder];
+                
+                // Update the saved order with the final arrangement
+                StorageManager.saveOrder(finalOrder);
+                
+                // Reorder the DOM elements
+                finalOrder.forEach(ticker => {
+                    const cardElement = document.getElementById(`card-${ticker}`);
+                    if (cardElement) {
+                        const colElement = cardElement.parentElement;
+                        container.appendChild(colElement);
+                    }
+                });
+            } else {
+                // No saved order, create initial order based on current cards
+                const initialOrder = Array.from(document.querySelectorAll('.card'))
+                    .map(card => card.id.replace('card-', ''));
+                StorageManager.saveOrder(initialOrder);
+            }
+        }
+        
+        // Call the arrange function when the page loads
+        document.addEventListener('DOMContentLoaded', arrangeCardsBasedOnOrder);
+        
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleString();
+        }
+        
+        function showToast(message, type = 'primary') {
+            const toastContainer = document.getElementById('toast-container');
+            const toastId = 'toast-' + Date.now();
+            const toast = document.createElement('div');
+            toast.className = 'toast show';
+            toast.setAttribute('role', 'alert');
+            toast.setAttribute('aria-live', 'assertive');
+            toast.setAttribute('aria-atomic', 'true');
+            toast.setAttribute('id', toastId);
+            
+            toast.innerHTML = `
+                <div class="toast-header bg-${type} text-white">
+                    <strong class="me-auto">Stock Dashboard</strong>
+                    <small>Just now</small>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+                <div class="toast-body bg-dark text-white">
+                    ${message}
+                </div>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            setTimeout(() => {
+                const toastEl = document.getElementById(toastId);
+                if (toastEl) {
+                    toastEl.remove();
+                }
+            }, 3000);
+        }
+        
+        // Add ticker form submission
+        document.getElementById('add-ticker-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const tickerInput = document.getElementById('ticker-input');
+            const ticker = tickerInput.value.trim().toUpperCase();
+            const submitButton = document.querySelector('#add-ticker-form button[type="submit"]');
+            
+            if (!ticker) {
+                showToast('Please enter a ticker symbol', 'warning');
+                return;
+            }
+            
+            // Show loading state
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+            showToast(`Checking ticker ${ticker}...`, 'info');
+            
+            // Send request to add ticker
+            const formData = new FormData();
+            formData.append('ticker', ticker);
+            
+            fetch('/api/add_ticker', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Reset button state
+                submitButton.disabled = false;
+                submitButton.innerHTML = '<i class="bi bi-plus"></i>';
+                
+                if (data.status === 'success') {
+                    showToast(`Added ticker ${ticker}`, 'success');
+                    
+                    // Add ticker to saved order
+                    StorageManager.addTickerToOrder(ticker);
+                    
+                    // Create and append the new stock card
+                    const stocksContainer = document.getElementById('stocks-container');
+                    const newTickerData = data.data;
+                    
+                    const colDiv = document.createElement('div');
+                    colDiv.className = 'col-md-4';
+                    
+                    const cardPrice = newTickerData.price || 'N/A';
+                    const cardChange = newTickerData.change || 'N/A';
+                    const cardStatus = newTickerData.market_status || 'Unknown';
+                    const cardLastUpdated = newTickerData.last_updated || 'Just now';
+                    
+                    let statusClass = 'market-closed';
+                    if (cardStatus.includes('Pre-market')) statusClass = 'pre-market';
+                    else if (cardStatus.includes('Market Open')) statusClass = 'market-open';
+                    else if (cardStatus.includes('After Hours')) statusClass = 'after-hours';
+                    else if (cardStatus.includes('Error')) statusClass = 'error';
+                    
+                    let priceClass = 'price-neutral';
+                    if (cardChange.includes('-')) priceClass = 'price-down';
+                    else if (cardChange.includes('+')) priceClass = 'price-up';
+                    
+                    colDiv.innerHTML = `
+                        <div class="card" id="card-${ticker}">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span class="ticker-symbol">${ticker}</span>
+                                <span class="badge rounded-pill ${statusClass} market-badge">
+                                    ${cardStatus}
+                                </span>
+                                <button class="btn btn-danger btn-sm rounded-circle delete-ticker" 
+                                        onclick="removeTicker('${ticker}')" 
+                                        title="Remove ${ticker}">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <h2 class="card-title ${priceClass}">
+                                    ${cardPrice}
+                                </h2>
+                                <p class="card-text ${priceClass}">
+                                    ${cardChange}
+                                </p>
+                                <p class="last-updated">Last updated: ${cardLastUpdated}</p>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Insert the new card at the top of the container
+                    if (stocksContainer.firstChild) {
+                        stocksContainer.insertBefore(colDiv, stocksContainer.firstChild);
+                    } else {
+                        stocksContainer.appendChild(colDiv);
+                    }
+                    
+                    tickerInput.value = '';
+                } else {
+                    showToast(data.message || 'Failed to add ticker', 'danger');
+                }
+            })
+            .catch(error => {
+                // Reset button state
+                submitButton.disabled = false;
+                submitButton.innerHTML = '<i class="bi bi-plus"></i>';
+                
+                console.error('Error:', error);
+                showToast('Failed to add ticker. Please try again.', 'danger');
+            });
+        });
+        
+        // Function to remove a ticker
+        function removeTicker(ticker) {
+            if (!confirm(`Are you sure you want to remove ${ticker}?`)) {
+                return;
+            }
+            
+            showToast(`Removing ticker ${ticker}...`, 'info');
+            
+            const formData = new FormData();
+            formData.append('ticker', ticker);
+            
+            fetch('/api/remove_ticker', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showToast(`Removed ticker ${ticker}`, 'success');
+                    
+                    // Remove ticker from saved order
+                    StorageManager.removeTickerFromOrder(ticker);
+                    
+                    // Remove the ticker card from UI with animation
+                    const cardElement = document.getElementById(`card-${ticker}`);
+                    if (cardElement) {
+                        const colElement = cardElement.parentElement;
+                        colElement.style.transition = 'opacity 0.3s';
+                        colElement.style.opacity = '0';
+                        
+                        setTimeout(() => {
+                            colElement.remove();
+                        }, 300);
+                    }
+                } else {
+                    showToast(data.message || 'Failed to remove ticker', 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('Failed to remove ticker. Please try again.', 'danger');
+            });
+        }
+        
+        // Auto refresh every 5 seconds (silent, no toast notification)
+        const AUTO_REFRESH_INTERVAL = 5 * 1000; // 5 seconds in milliseconds
+        
+        // Function to update a single stock card with new data
+        function updateStockCard(ticker, data) {
+            const cardElement = document.getElementById(`card-${ticker}`);
+            if (!cardElement) return;
+            
+            // Update price
+            const priceElement = cardElement.querySelector('.card-title');
+            if (priceElement) {
+                priceElement.textContent = data.price;
+                
+                // Update price color
+                priceElement.className = 'card-title';
+                if (data.change.includes('-')) {
+                    priceElement.classList.add('price-down');
+                } else if (data.change.includes('+')) {
+                    priceElement.classList.add('price-up');
+                } else {
+                    priceElement.classList.add('price-neutral');
+                }
+            }
+            
+            // Update change
+            const changeElement = cardElement.querySelector('.card-text');
+            if (changeElement) {
+                changeElement.textContent = data.change;
+                
+                // Update change color
+                changeElement.className = 'card-text';
+                if (data.change.includes('-')) {
+                    changeElement.classList.add('price-down');
+                } else if (data.change.includes('+')) {
+                    changeElement.classList.add('price-up');
+                } else {
+                    changeElement.classList.add('price-neutral');
+                }
+            }
+            
+            // Update market status badge
+            const badgeElement = cardElement.querySelector('.badge');
+            if (badgeElement && data.market_status) {
+                badgeElement.textContent = data.market_status;
+                
+                // Update badge color
+                badgeElement.className = 'badge rounded-pill market-badge';
+                if (data.market_status.includes('Pre-market')) {
+                    badgeElement.classList.add('pre-market');
+                } else if (data.market_status.includes('Market Open')) {
+                    badgeElement.classList.add('market-open');
+                } else if (data.market_status.includes('After Hours')) {
+                    badgeElement.classList.add('after-hours');
+                } else if (data.market_status.includes('Error')) {
+                    badgeElement.classList.add('error');
+                } else {
+                    badgeElement.classList.add('market-closed');
+                }
+            }
+            
+            // Update last updated time
+            const lastUpdatedElement = cardElement.querySelector('.last-updated');
+            if (lastUpdatedElement) {
+                lastUpdatedElement.textContent = `Last updated: ${data.last_updated}`;
+            }
+        }
+        
+        // Function to silently refresh data without page reload
+        function silentRefresh() {
+            fetch('/api/update')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Data updated silently');
+                    
+                    // Now fetch the updated data
+                    return fetch('/api/stocks');
+                })
+                .then(response => response.json())
+                .then(stockData => {
+                    // Update each stock card with the new data
+                    for (const [ticker, data] of Object.entries(stockData)) {
+                        updateStockCard(ticker, data);
+                    }
+                    
+                    // Handle any new tickers that might have been added by another session
+                    const currentTickers = Array.from(document.querySelectorAll('.card'))
+                        .map(card => card.id.replace('card-', ''));
+                        
+                    for (const ticker in stockData) {
+                        if (!currentTickers.includes(ticker)) {
+                            // New ticker, reload the page to show it
+                            window.location.reload();
+                            return;
+                        }
+                    }
+                    
+                    // Check if any tickers were removed by another session
+                    if (currentTickers.length !== Object.keys(stockData).length) {
+                        // Ticker count mismatch, reload the page
+                        window.location.reload();
+                        return;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error during silent refresh:', error);
+                });
+        }
+        
+        // Schedule the next refresh
+        const scheduleNextRefresh = () => {
+            window.refreshTimer = setTimeout(() => {
+                silentRefresh();
+                scheduleNextRefresh();
+            }, AUTO_REFRESH_INTERVAL);
+        };
+        
+        // Start the refresh cycle
+        scheduleNextRefresh();
+        
+        // Update clock every second
+        setInterval(updateClock, 1000);
+        updateClock();
+    </script>
+</body>
+</html> 
