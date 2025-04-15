@@ -502,4 +502,4 @@ def api_update():
     return jsonify({"status": "success", "message": "Stock data updated"})
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5001) // Force redeploy comment
+    app.run(debug=True, host='0.0.0.0', port=5001) # Force redeploy comment
