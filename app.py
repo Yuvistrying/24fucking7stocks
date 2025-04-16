@@ -544,6 +544,54 @@ def index():
     
     return render_template('index.html', stocks=user_stock_data, username=current_user.username)
 
+# Debug route to provide more detailed information (disable in production)
+@app.route('/debug-info')
+def debug_info():
+    """Route for debugging deployment issues"""
+    from flask import jsonify
+    import platform
+    import sys
+    
+    # Basic system information
+    info = {
+        "python_version": sys.version,
+        "platform": platform.platform(),
+        "environment": {k: v for k, v in os.environ.items() if k.startswith(('FLASK_', 'VERCEL', 'DATABASE', 'SUPABASE'))},
+        "flask_config": {
+            "debug": app.debug,
+            "testing": app.testing,
+            "secret_key_set": bool(app.config.get('SECRET_KEY')),
+            "database_url_type": app.config.get('SQLALCHEMY_DATABASE_URI', '').split(':')[0] if app.config.get('SQLALCHEMY_DATABASE_URI') else None,
+        },
+        "database": {
+            "engine_options": str(app.config.get('SQLALCHEMY_ENGINE_OPTIONS', {})),
+            "models": ["User", "Ticker"]
+        }
+    }
+    
+    # Test database connection
+    db_status = "unknown"
+    db_error = None
+    try:
+        with app.app_context():
+            # Simple database query that shouldn't fail
+            result = db.session.execute("SELECT 1").fetchone()
+            db_status = f"connected, query result: {result}"
+    except Exception as e:
+        db_status = "error"
+        db_error = str(e)
+    
+    info["database"]["status"] = db_status
+    info["database"]["error"] = db_error
+    
+    # Check if we have stock data
+    info["stock_data"] = {
+        "count": len(STOCK_DATA),
+        "tickers": list(STOCK_DATA.keys())[:5]  # Just show first 5 to avoid huge response
+    }
+    
+    return jsonify(info)
+
 # API routes
 @app.route('/api/stocks')
 @login_required

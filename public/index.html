@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>24/7 Stock Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f8f9fa;
+      padding-top: 20px;
+    }
+    .navbar {
+      margin-bottom: 20px;
+    }
+    .stock-card {
+      transition: all 0.3s ease;
+      cursor: grab;
+    }
+    .stock-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .remove-btn {
+      color: #dc3545;
+      cursor: pointer;
+      font-size: 1.2rem;
+    }
+    .positive {
+      color: #28a745;
+    }
+    .negative {
+      color: #dc3545;
+    }
+    .neutral {
+      color: #6c757d;
+    }
+    .timestamp {
+      font-size: 0.8rem;
+      color: #6c757d;
+    }
+    #login-container, #signup-container {
+      max-width: 400px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .auth-container {
+      display: none;
+    }
+    #dashboard-container {
+      display: none;
+    }
+    .login-switch {
+      cursor: pointer;
+      color: #007bff;
+    }
+    #loading-spinner {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(255,255,255,0.8);
+      z-index: 9999;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+  <!-- Loading Spinner -->
+  <div id="loading-spinner">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+  </div>
+
+  <!-- Authentication Containers -->
+  <div id="auth-container" class="container">
+    <!-- Login Form -->
+    <div id="login-container" class="auth-container">
+      <h2 class="text-center mb-4">Login</h2>
+      <div id="login-error" class="alert alert-danger" style="display: none;"></div>
+      <form id="login-form">
+        <div class="mb-3">
+          <label for="login-email" class="form-label">Email</label>
+          <input type="email" class="form-control" id="login-email" required>
+        </div>
+        <div class="mb-3">
+          <label for="login-password" class="form-label">Password</label>
+          <input type="password" class="form-control" id="login-password" required>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Login</button>
+      </form>
+      <p class="text-center mt-3">
+        Don't have an account? <span class="login-switch" onclick="toggleAuthForms()">Sign Up</span>
+      </p>
+    </div>
+
+    <!-- Signup Form -->
+    <div id="signup-container" class="auth-container">
+      <h2 class="text-center mb-4">Create Account</h2>
+      <div id="signup-error" class="alert alert-danger" style="display: none;"></div>
+      <form id="signup-form">
+        <div class="mb-3">
+          <label for="signup-username" class="form-label">Username</label>
+          <input type="text" class="form-control" id="signup-username" required>
+        </div>
+        <div class="mb-3">
+          <label for="signup-email" class="form-label">Email</label>
+          <input type="email" class="form-control" id="signup-email" required>
+        </div>
+        <div class="mb-3">
+          <label for="signup-password" class="form-label">Password</label>
+          <input type="password" class="form-control" id="signup-password" required>
+        </div>
+        <div class="mb-3">
+          <label for="signup-confirm-password" class="form-label">Confirm Password</label>
+          <input type="password" class="form-control" id="signup-confirm-password" required>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Sign Up</button>
+      </form>
+      <p class="text-center mt-3">
+        Already have an account? <span class="login-switch" onclick="toggleAuthForms()">Login</span>
+      </p>
+    </div>
+  </div>
+
+  <!-- Dashboard Container -->
+  <div id="dashboard-container" class="container">
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="#">24/7 Stock Dashboard</a>
+        <div class="d-flex align-items-center">
+          <div class="dropdown me-2">
+            <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-person-circle"></i> <span id="username"></span>
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="userDropdown">
+              <li><a class="dropdown-item" href="#" id="logout-btn">Logout</a></li>
+            </ul>
+          </div>
+          <form class="d-flex" id="add-ticker-form">
+            <input class="form-control me-2" type="text" placeholder="Add Ticker" id="ticker-input" pattern="[A-Za-z0-9.]+" required>
+            <button class="btn btn-success" type="submit">Add</button>
+          </form>
+        </div>
+      </div>
+    </nav>
+    
+    <div class="d-flex justify-content-between mb-4">
+      <h1>Your Stocks</h1>
+      <button class="btn btn-primary" id="refresh-btn">
+        <i class="bi bi-arrow-clockwise"></i> Refresh
+      </button>
+    </div>
+    
+    <div id="toast-container" class="toast-container position-fixed top-0 end-0 p-3"></div>
+    
+    <div class="row" id="stocks-container">
+      <!-- Stock cards will be dynamically added here -->
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.18.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.18.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.18.0/firebase-database-compat.js"></script>
+  
+  <!-- Firebase Config -->
+  <script src="firebase-config.js"></script>
+  
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <!-- App JS -->
+  <script>
+    // Global variables
+    let currentUser = null;
+    let userTickers = [];
+    let stockData = {};
+    let stockPositions = {};
+    
+    // DOM elements
+    const authContainer = document.getElementById('auth-container');
+    const loginContainer = document.getElementById('login-container');
+    const signupContainer = document.getElementById('signup-container');
+    const dashboardContainer = document.getElementById('dashboard-container');
+    const stocksContainer = document.getElementById('stocks-container');
+    const usernameDisplay = document.getElementById('username');
+    const addTickerForm = document.getElementById('add-ticker-form');
+    const tickerInput = document.getElementById('ticker-input');
+    const refreshBtn = document.getElementById('refresh-btn');
+    const logoutBtn = document.getElementById('logout-btn');
+    const loginForm = document.getElementById('login-form');
+    const signupForm = document.getElementById('signup-form');
+    const loginError = document.getElementById('login-error');
+    const signupError = document.getElementById('signup-error');
+    const loadingSpinner = document.getElementById('loading-spinner');
+    
+    // Toggle between login and signup forms
+    function toggleAuthForms() {
+      loginContainer.style.display = loginContainer.style.display === 'none' ? 'block' : 'none';
+      signupContainer.style.display = signupContainer.style.display === 'none' ? 'block' : 'none';
+    }
+    
+    // Show loading spinner
+    function showLoading() {
+      loadingSpinner.style.display = 'flex';
+    }
+    
+    // Hide loading spinner
+    function hideLoading() {
+      loadingSpinner.style.display = 'none';
+    }
+    
+    // Show toast notification
+    function showToast(message, type = 'success') {
+      const toastContainer = document.getElementById('toast-container');
+      const toastId = `toast-${Date.now()}`;
+      
+      const toastHtml = `
+        <div id="${toastId}" class="toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'}" role="alert" aria-live="assertive" aria-atomic="true">
+          <div class="d-flex">
+            <div class="toast-body">
+              ${message}
+            </div>
+            <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+          </div>
+        </div>
+      `;
+      
+      toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+      const toastElement = document.getElementById(toastId);
+      const toast = new bootstrap.Toast(toastElement);
+      toast.show();
+    }
+    
+    // Initialize the auth state
+    function initAuth() {
+      // Show loading initially
+      showLoading();
+      
+      // Set default display
+      loginContainer.style.display = 'block';
+      signupContainer.style.display = 'none';
+      
+      // Listen for auth state changes
+      firebase.auth().onAuthStateChanged(user => {
+        if (user) {
+          // User is signed in
+          currentUser = user;
+          usernameDisplay.textContent = user.displayName || user.email;
+          
+          // Show dashboard
+          authContainer.style.display = 'none';
+          dashboardContainer.style.display = 'block';
+          
+          // Load user's tickers and stock data
+          loadUserTickers();
+        } else {
+          // No user is signed in
+          currentUser = null;
+          
+          // Show auth forms
+          authContainer.style.display = 'block';
+          dashboardContainer.style.display = 'none';
+          
+          hideLoading();
+        }
+      });
+    }
+    
+    // Load user's tickers from Firebase
+    function loadUserTickers() {
+      showLoading();
+      
+      firebase.database().ref(`users/${currentUser.uid}/tickers`).once('value')
+        .then(snapshot => {
+          userTickers = snapshot.val() || [];
+          
+          // Load positions from localStorage
+          const savedPositions = localStorage.getItem(`stockPositions_${currentUser.uid}`);
+          if (savedPositions) {
+            stockPositions = JSON.parse(savedPositions);
+          }
+          
+          // Load stock data
+          return loadStockData();
+        })
+        .catch(error => {
+          console.error('Error loading tickers:', error);
+          showToast('Failed to load your tickers', 'danger');
+          hideLoading();
+        });
+    }
+    
+    // Load stock data for user's tickers
+    function loadStockData() {
+      if (userTickers.length === 0) {
+        renderStockCards();
+        hideLoading();
+        return Promise.resolve();
+      }
+      
+      return firebase.database().ref('stocks').once('value')
+        .then(snapshot => {
+          stockData = snapshot.val() || {};
+          renderStockCards();
+          hideLoading();
+        })
+        .catch(error => {
+          console.error('Error loading stock data:', error);
+          showToast('Failed to load stock data', 'danger');
+          hideLoading();
+        });
+    }
+    
+    // Render stock cards
+    function renderStockCards() {
+      stocksContainer.innerHTML = '';
+      
+      // Sort tickers based on saved positions
+      const sortedTickers = userTickers.sort((a, b) => {
+        const posA = stockPositions[a] || 999;
+        const posB = stockPositions[b] || 999;
+        return posA - posB;
+      });
+      
+      // Create cards for each ticker
+      sortedTickers.forEach((ticker, index) => {
+        const data = stockData[ticker] || {
+          symbol: ticker,
+          price: 'Loading...',
+          change: 'Loading...',
+          last_updated: new Date().toISOString()
+        };
+        
+        // Save position if not already saved
+        if (!stockPositions[ticker]) {
+          stockPositions[ticker] = index;
+        }
+        
+        // Create card
+        const card = createStockCard(data);
+        stocksContainer.appendChild(card);
+      });
+      
+      // Save positions to localStorage
+      saveStockPositions();
+    }
+    
+    // Create a stock card element
+    function createStockCard(data) {
+      const col = document.createElement('div');
+      col.className = 'col-md-4 mb-4';
+      col.dataset.ticker = data.symbol;
+      
+      // Determine price change class
+      let changeClass = 'neutral';
+      if (data.change && data.change.includes('(')) {
+        changeClass = data.change.includes('-') ? 'negative' : 'positive';
+      }
+      
+      // Format last updated time
+      const lastUpdated = new Date(data.last_updated);
+      const timeString = lastUpdated.toLocaleTimeString();
+      
+      col.innerHTML = `
+        <div class="card stock-card">
+          <div class="card-header">
+            <h5 class="card-title mb-0">${data.symbol}</h5>
+            <span class="remove-btn" onclick="removeTicker('${data.symbol}')">
+              <i class="bi bi-x-circle-fill"></i>
+            </span>
+          </div>
+          <div class="card-body">
+            <h4 class="card-text">$${data.price || 'N/A'}</h4>
+            <p class="card-text ${changeClass}">${data.change || 'N/A'}</p>
+            <p class="timestamp">Last updated: ${timeString}</p>
+          </div>
+        </div>
+      `;
+      
+      // Make card draggable
+      const card = col.querySelector('.stock-card');
+      card.draggable = true;
+      
+      // Add drag events
+      card.addEventListener('dragstart', handleDragStart);
+      card.addEventListener('dragover', handleDragOver);
+      card.addEventListener('dragenter', handleDragEnter);
+      card.addEventListener('dragleave', handleDragLeave);
+      card.addEventListener('drop', handleDrop);
+      card.addEventListener('dragend', handleDragEnd);
+      
+      return col;
+    }
+    
+    // Drag and drop variables
+    let draggedElement = null;
+    
+    // Drag start event handler
+    function handleDragStart(e) {
+      draggedElement = this.parentNode;
+      this.style.opacity = '0.4';
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', draggedElement.dataset.ticker);
+    }
+    
+    // Drag over event handler
+    function handleDragOver(e) {
+      if (e.preventDefault) {
+        e.preventDefault();
+      }
+      e.dataTransfer.dropEffect = 'move';
+      return false;
+    }
+    
+    // Drag enter event handler
+    function handleDragEnter(e) {
+      this.classList.add('border-primary');
+    }
+    
+    // Drag leave event handler
+    function handleDragLeave(e) {
+      this.classList.remove('border-primary');
+    }
+    
+    // Drop event handler
+    function handleDrop(e) {
+      if (e.stopPropagation) {
+        e.stopPropagation();
+      }
+      
+      if (draggedElement !== this.parentNode) {
+        const ticker = e.dataTransfer.getData('text/plain');
+        const targetTicker = this.parentNode.dataset.ticker;
+        
+        // Swap positions in stockPositions
+        const tempPosition = stockPositions[ticker];
+        stockPositions[ticker] = stockPositions[targetTicker];
+        stockPositions[targetTicker] = tempPosition;
+        
+        // Save and re-render
+        saveStockPositions();
+        renderStockCards();
+      }
+      
+      this.classList.remove('border-primary');
+      return false;
+    }
+    
+    // Drag end event handler
+    function handleDragEnd(e) {
+      this.style.opacity = '1';
+    }
+    
+    // Save stock positions to localStorage
+    function saveStockPositions() {
+      localStorage.setItem(`stockPositions_${currentUser.uid}`, JSON.stringify(stockPositions));
+    }
+    
+    // Add ticker
+    function addTicker(ticker) {
+      if (!ticker) return;
+      
+      // Validate ticker
+      ticker = ticker.toUpperCase();
+      if (!ticker.match(/^[A-Z0-9.]{1,10}$/)) {
+        showToast('Invalid ticker symbol', 'danger');
+        return;
+      }
+      
+      // Check if ticker already exists
+      if (userTickers.includes(ticker)) {
+        showToast('Ticker already exists', 'danger');
+        return;
+      }
+      
+      showLoading();
+      
+      // Call API to add ticker
+      fetch('/api/add_ticker', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ticker,
+          userId: currentUser.uid
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          userTickers.push(ticker);
+          // Assign position after all existing tickers
+          stockPositions[ticker] = Object.keys(stockPositions).length;
+          saveStockPositions();
+          showToast(`Added ${ticker} to your dashboard`);
+          
+          // Reload stock data
+          return loadStockData();
+        } else {
+          throw new Error(data.error || 'Failed to add ticker');
+        }
+      })
+      .catch(error => {
+        console.error('Error adding ticker:', error);
+        showToast(error.message, 'danger');
+        hideLoading();
+      });
+    }
+    
+    // Remove ticker
+    function removeTicker(ticker) {
+      if (!confirm(`Are you sure you want to remove ${ticker}?`)) {
+        return;
+      }
+      
+      showLoading();
+      
+      // Call API to remove ticker
+      fetch('/api/remove_ticker', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ticker,
+          userId: currentUser.uid
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Remove from arrays
+          userTickers = userTickers.filter(t => t !== ticker);
+          delete stockPositions[ticker];
+          saveStockPositions();
+          
+          showToast(`Removed ${ticker} from your dashboard`);
+          renderStockCards();
+        } else {
+          throw new Error(data.error || 'Failed to remove ticker');
+        }
+      })
+      .catch(error => {
+        console.error('Error removing ticker:', error);
+        showToast(error.message, 'danger');
+      })
+      .finally(() => {
+        hideLoading();
+      });
+    }
+    
+    // Refresh stock data
+    function refreshStockData() {
+      showLoading();
+      
+      fetch('/api/update')
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            showToast('Stock data updated');
+            return loadStockData();
+          } else {
+            throw new Error(data.error || 'Failed to update stock data');
+          }
+        })
+        .catch(error => {
+          console.error('Error refreshing data:', error);
+          showToast(error.message, 'danger');
+          hideLoading();
+        });
+    }
+    
+    // Login user
+    function loginUser(email, password) {
+      showLoading();
+      
+      firebase.auth().signInWithEmailAndPassword(email, password)
+        .catch(error => {
+          console.error('Login error:', error);
+          loginError.textContent = error.message;
+          loginError.style.display = 'block';
+          hideLoading();
+        });
+    }
+    
+    // Sign up user
+    function signupUser(email, password, username) {
+      showLoading();
+      
+      firebase.auth().createUserWithEmailAndPassword(email, password)
+        .then(userCredential => {
+          // Update profile
+          return userCredential.user.updateProfile({
+            displayName: username
+          }).then(() => {
+            // Create user record in database
+            return firebase.database().ref(`users/${userCredential.user.uid}`).set({
+              username,
+              email,
+              tickers: ['AAPL', 'MSFT', 'GOOGL'], // Default tickers
+              created_at: firebase.database.ServerValue.TIMESTAMP
+            });
+          });
+        })
+        .catch(error => {
+          console.error('Signup error:', error);
+          signupError.textContent = error.message;
+          signupError.style.display = 'block';
+          hideLoading();
+        });
+    }
+    
+    // Logout user
+    function logoutUser() {
+      showLoading();
+      
+      firebase.auth().signOut()
+        .catch(error => {
+          console.error('Logout error:', error);
+          showToast('Failed to log out', 'danger');
+          hideLoading();
+        });
+    }
+    
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', () => {
+      // Initialize authentication
+      initAuth();
+      
+      // Add ticker form
+      addTickerForm.addEventListener('submit', e => {
+        e.preventDefault();
+        const ticker = tickerInput.value.trim();
+        if (ticker) {
+          addTicker(ticker);
+          tickerInput.value = '';
+        }
+      });
+      
+      // Refresh button
+      refreshBtn.addEventListener('click', refreshStockData);
+      
+      // Logout button
+      logoutBtn.addEventListener('click', e => {
+        e.preventDefault();
+        logoutUser();
+      });
+      
+      // Login form
+      loginForm.addEventListener('submit', e => {
+        e.preventDefault();
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
+        loginError.style.display = 'none';
+        loginUser(email, password);
+      });
+      
+      // Signup form
+      signupForm.addEventListener('submit', e => {
+        e.preventDefault();
+        const username = document.getElementById('signup-username').value;
+        const email = document.getElementById('signup-email').value;
+        const password = document.getElementById('signup-password').value;
+        const confirmPassword = document.getElementById('signup-confirm-password').value;
+        
+        signupError.style.display = 'none';
+        
+        // Validate
+        if (password !== confirmPassword) {
+          signupError.textContent = 'Passwords do not match';
+          signupError.style.display = 'block';
+          return;
+        }
+        
+        signupUser(email, password, username);
+      });
+      
+      // Set up automatic refresh every 60 seconds
+      setInterval(loadStockData, 60000);
+    });
+  </script>
+</body>
+</html> 

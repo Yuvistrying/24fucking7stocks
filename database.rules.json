@@ -1,0 +1,20 @@
+{
+  "rules": {
+    ".read": "auth != null",
+    ".write": "auth != null",
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid",
+        "tickers": {
+          ".read": "auth != null && auth.uid == $uid",
+          ".write": "auth != null && auth.uid == $uid"
+        }
+      }
+    },
+    "stocks": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.token.admin === true"
+    }
+  }
+} 
