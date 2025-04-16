@@ -1,5 +1,6 @@
 // Your Firebase configuration
-// Replace with your actual Firebase project configuration
+// Replace with your actual Firebase project configuration from:
+// Firebase Console -> Project Settings -> General -> Your apps -> SDK setup and configuration
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "YOUR_PROJECT.firebaseapp.com",

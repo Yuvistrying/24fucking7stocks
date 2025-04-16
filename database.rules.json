@@ -1,7 +1,7 @@
 {
   "rules": {
-    ".read": "auth != null",
-    ".write": "auth != null",
+    ".read": false,
+    ".write": false,
     "users": {
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
@@ -14,7 +14,11 @@
     },
     "stocks": {
       ".read": "auth != null",
-      ".write": "auth != null && auth.token.admin === true"
+      ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || newData.parent().child('users').child(auth.uid).exists())"
+    },
+    "admins": {
+      ".read": "root.child('admins').child(auth.uid).exists()",
+      ".write": "root.child('admins').child(auth.uid).exists()"
     }
   }
 } 
